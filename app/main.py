@@ -111,23 +111,20 @@ async def message(
 
 
 async def unpack_payload(payload: bytes) -> Optional[Tuple]:
-    try:
-        message: dict = json.loads(payload.decode("utf-8"))
-        sensor_id: str = message["sensorID"]
-        room_id: int = int(sensor_id.split("-")[1])
-        # message_type: str = message["type"] # useless here
-        value = message["value"]
-    except:
-        raise HTTPException(status_code=400, detail="MQTT message error")
+    message: dict = json.loads(payload.decode("utf-8"))
+    sensor_id: str = message["sensorID"]
+    room_id: int = int(sensor_id.split("-")[1])
+    # message_type: str = message["type"] # useless here
+    value = message["value"]
     return room_id, value
 
 
 async def update_valves(state: dict) -> None:
-    for room_id, state in state.items():
-        if state.get(
+    for room_id, room_state in state.items():
+        if room_state.get(
             "motion", True
         ):  # if motion is detected, or if the motion sensor has no state (broken, or no info yet)
-            if state["temperature"] < DESIRED_ROOM_TEMP:
+            if room_state["temperature"] < DESIRED_ROOM_TEMP:
                 await open_valve(room_id=room_id)
             else:
                 await close_valve(room_id=room_id)
