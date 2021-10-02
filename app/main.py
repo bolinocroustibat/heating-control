@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from typing import Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
@@ -12,7 +13,6 @@ from app.config import (
     APP_NAME,
     DESCRIPTION,
     VERSION,
-    MQTT_HOST,
     MQTT_PORT,
     MQTT_USERNAME,
     MQTT_PASSWORD,
@@ -33,7 +33,7 @@ app.add_middleware(
 
 
 mqtt_config = MQTTConfig(
-    host=MQTT_HOST,
+    host=os.getenv("MQTT_HOST", "127.0.0.1"), # Get the MQTT host from the environment if Docker, otherwise use localhost
     port=MQTT_PORT,
     keepalive=60,
     username=MQTT_USERNAME,
