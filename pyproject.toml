@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "wattx-heating-control"
+name = "heating-control"
 version = "0.1.0"
-description = ""
+description = "IoT app to keeps the temperatures of rooms at a desired one, using MQTT-based temperature sensors, motion sensors and heating valves"
 authors = ["Adrien Carpentier <moi@adriencarpentier.com>"]
 
 [tool.poetry.dependencies]
