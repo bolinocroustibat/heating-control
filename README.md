@@ -10,67 +10,82 @@ Only if motion is detected in the room, or if the motion sensor didn't return an
 
 If no motion is detected, the heating valve is closed.
 
+## Stack
+
+It uses [FastAPI](https://fastapi.tiangolo.com/), a very modern and beautifully designed Python API framework based on Python type hinting and Pydantic models, and [FastApi-MQTT](https://sabuhish.github.io/fastapi-mqtt/), a MQTT implementation module for FastAPI. See [Run without Docker->Prerequisites](####prerequisites) section for more details.
+
 
 ## Suggested improvements
 
-1)
+### Improvement #1
+**Issue:**
+Currently the app has no unit tests.
+
+**Suggested improvement:**
+Unit tests can be easily added in a `app/test.py` file, following FastAPI test standards (https://fastapi.tiangolo.com/tutorial/testing/).
+
+### Improvement #2
 **Issue:**
 Currently, the state for rooms temperatures and motions is not stored elsewhere than the app memory, so if the app is stopped and restarted for example, state will be lost and it will need to wait for the next reading from sensors to adjust the temperature.
 
 **Suggested improvement:**
 Store the state in a persistent database like a local SQLite or a NoSQL like MongoDB.
 
-2)
+### Improvement #3
 **Issue:**
-Currently, the app can only fully open (100) or fully close (0) the heating valve, so it has no way to change the heating rate. If the time between two readings is too long for example, the app might overshoot the desired temperature.
+Currently, the app can only fully open (100) or fully close (0) the heating valves, so it has no way to change the heating rate. If the time between two readings is too long for example, the app might overshoot the desired temperature.
 
 **Suggested improvement:**
-When the current temperature is close to the desired temperature, the valve could open not fully (between O and 100), according to a proper algorithm. By storing the datetime for the previous reading(s) from sensors, the algorithm could calculate the past growth rate of the temperature between the last readings with a basic linear regression, and use that to adjust the next valve opening rate.
+When the current temperature is close to the desired temperature, the valve could open not fully (any value between 0 and 100), according to a proper algorithm. By storing the datetime for the previous reading(s) from sensors, the algorithm could calculate the past growth rate of the temperature between the last readings with a basic linear regression, and use that to adjust the next valve opening rate.
+
+### Improvement #4
+**Suggested improvement:**
+Use instanciated objects from a `Room` class with temperature and motion attributes instead of a global dictionary variable for the state.
 
 
-### Input
+## Configuration
 
 Edit the config file `app/config.py` to change:
 - the desired room temperature (`DESIRED_ROOM_TEMP`)
-- the MQTT broker credentials, if necessary
+- the MQTT credentials if necessary
+
+## HTTP endpoints
+
+- `/health-check`:
+    - Returns information about that health of the app, including the current state of all rooms, and the connection status to MQTT broker
+    - Method: `GET`
+- `/docs`:
+    - Returns the OpenAPI specification of the service
+    - Method: `GET`
 
 
+## Topics
 
-- `/health-check`: returns some info about the app, including if MQTT service is running
-- `/docs`: returns the OpenAPI specification of the app
+- `/readings/temperature`
+	Example input:
+	```json
+	{
+	"sensorID": "sensor-3",
+	"type": "temperature",
+	"value": 25.3
+	}
 
-Receiving this message should indicate that Sensor 1 reads 25.3°C for the area of the room where it has been installed.
+- `/readings/motion`
+	Example input:
+	```json
+	{
+	"sensorID": "sensor-2",
+	"type": "motion",
+	"value": true
+	}
 
-## MQTT topics
-
-### Output
-
-You will need to send the valve openness value to the topic `/actuators/room-1` in the json format:
-
-```json
-{
-  "level": 14
-}
-```
-
-Sending the message indicates that the valve should be set to 14% openness.
-
-
-### Hints
-- Use `docker` and `docker-compose` to orchestrate your solution
-- The fastest way to get mqtt broker is to run mosquitto with docker:
-    ```
-    docker run -it -p 1883:1883 --name=mosquitto  toke/mosquitto
-    ```
-- You don't need to use fancy algorithms for temperature control; opt for something simple. If you want, you can describe a more complex solution in the README.
-
-
-### Too easy?
-
-If you finished the task quickly and feel like doing more (that's completely optional):
-- You can imagine that there's also a motion sensor and you want to keep the room warm only when motion is present.
-- You can imagine there are a lot of rooms! And the sensors and valves should be controlled on per room basis.
-- You can imagine any other limitations you think would be fun to work with.
+- `/actuators/room-{room_id}`
+	Example output:
+	```json
+	{
+	"level": 100
+	}
+	```
 
 
 ## How to run
@@ -92,31 +107,30 @@ You need:
 - a MQTT broker like [Mosquitto](https://mosquitto.org/:)
 
 If you don't want to use Poetry but want to install Python dependencies manually, you will need the following Python packages:
-- fastapi
-- fastapi_mqtt
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [FastApi-MQTT](https://sabuhish.github.io/fastapi-mqtt/)
 - toml
 
 #### Run the app
 
 Run Mosquitto MQTT broker with:
-	- On MacOS, as a one-time executable:
-	```sh
-	/usr/local/opt/mosquitto/sbin/mosquitto -c /usr/local/etc/mosquitto/mosquitto.conf
-	```
-	- or, on MacOS, as a service:
-	```sh
-	brew services start mosquitto
-	```
-
-If you don't want to install Mosquitto, we can also run a Mosquitto container with:
-	```sh
-	docker run -it -p 1883:1883 --name=mosquitto toke/mosquitto
-	```
+-oOn MacOS, as a one-time executable:
+```sh
+/usr/local/opt/mosquitto/sbin/mosquitto -c /usr/local/etc/mosquitto/mosquitto.conf
+```
+- or, on MacOS, as a service:
+```sh
+brew services start mosquitto
+```
+- if you don't want to install Mosquitto, we can also run a Mosquitto container with:
+```sh
+docker run -it -p 1883:1883 --name=mosquitto toke/mosquitto
+```
 
 Then run the app with:
-	```sh
-	poetry run uvicorn app.main:app --reload
-	```
+```sh
+poetry run uvicorn app.main:app --reload
+```
 Poetry will create the virtual environment and install the necessary packages in it for you.
 
 You can then send a message to the MQTT broker in another terminal windows like this:
