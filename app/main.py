@@ -1,12 +1,9 @@
-import asyncio
 import json
 import os
 from typing import Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-# from fastapi.security import HTTPBasicCredentials
 from fastapi_mqtt import FastMQTT, MQTTConfig
 
 from app.config import (
@@ -33,7 +30,9 @@ app.add_middleware(
 
 
 mqtt_config = MQTTConfig(
-    host=os.getenv("MQTT_HOST", "127.0.0.1"), # Get the MQTT host from the environment if Docker, otherwise use localhost
+    host=os.getenv(
+        "MQTT_HOST", "127.0.0.1"
+    ),  # Get the MQTT host from the environment if Docker, otherwise use localhost
     port=MQTT_PORT,
     keepalive=60,
     username=MQTT_USERNAME,
@@ -52,13 +51,17 @@ async def health_check() -> dict:
     """
     Display basic health check
     """
+    health: dict = {}
     try:
         if mqtt.client.is_connected:
-            return {"mqtt status": "ok"}
+            health["mqtt status"] = "ok"
         else:
-            return {"mqtt status": "not connected"}
+            health["mqtt status"] = "not connected"
     except:
-        return {"mqtt status": "unknown error"}
+        health["mqtt status"] = "unknown error"
+    health["desired room temperature"] = DESIRED_ROOM_TEMP
+    health["state"] = state
+    return health
 
 
 @mqtt.on_connect()
@@ -87,19 +90,8 @@ async def message(
     client, topic: str, payload: bytes, qos: int, properties: dict
 ) -> None:
     if topic == "/readings/temperature":
-        try:
-            message: dict = json.loads(payload.decode("utf-8"))
-            sensor_id: str = message["sensorID"]
-            room_id: int = sensor_id.split("-")[1]
-            # message_type: str = message["type"] # useless here
-            value: float = message["value"]
-        except:
-            raise HTTPException(status_code=400, detail="MQTT message error")
-
-        if room_id not in state:
-            state[room_id] = {"temperature": value}
-        else:
-            state[room_id]["temperature"] = value
+        room_id, value = await unpack_payload(payload=payload)
+        state[room_id] = {"temperature": value}
 
         print(
             f"Current temperature report for room {room_id} updated to {str(value)}°C. Current state: {str(state)}"
@@ -108,19 +100,8 @@ async def message(
         await update_valves(state=state)
 
     if topic == "/readings/motion":
-        try:
-            message: dict = json.loads(payload.decode("utf-8"))
-            sensor_id: str = message["sensorID"]
-            room_id: int = sensor_id.split("-")[1]
-            # message_type: str = message["type"] # useless here
-            value: bool = message["value"]
-        except:
-            raise HTTPException(status_code=400, detail="MQTT message error")
-
-        if room_id not in state:
-            state[room_id] = {"motion": value}
-        else:
-            state[room_id]["motion"] = value
+        room_id, value = await unpack_payload(payload=payload)
+        state[room_id] = {"motion": value}
 
         print(
             f"Current motion report for room {room_id} updated to {str(value)}. Current state: {str(state)}"
@@ -129,9 +110,23 @@ async def message(
         await update_valves(state=state)
 
 
+async def unpack_payload(payload: bytes) -> Optional[Tuple]:
+    try:
+        message: dict = json.loads(payload.decode("utf-8"))
+        sensor_id: str = message["sensorID"]
+        room_id: int = int(sensor_id.split("-")[1])
+        # message_type: str = message["type"] # useless here
+        value = message["value"]
+    except:
+        raise HTTPException(status_code=400, detail="MQTT message error")
+    return room_id, value
+
+
 async def update_valves(state: dict) -> None:
     for room_id, state in state.items():
-        if state.get("motion", True): # if motion is detected, or if the motion sensor has no state (broken, or no info yet)
+        if state.get(
+            "motion", True
+        ):  # if motion is detected, or if the motion sensor has no state (broken, or no info yet)
             if state["temperature"] < DESIRED_ROOM_TEMP:
                 await open_valve(room_id=room_id)
             else:
