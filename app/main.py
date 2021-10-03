@@ -115,7 +115,7 @@ async def unpack_payload(payload: bytes) -> Optional[Tuple]:
     sensor_id: str = message["sensorID"]
     room_id: int = int(sensor_id.split("-")[1])
     # message_type: str = message["type"] # useless here
-    value = message["value"]
+    value: float or bool = message["value"]
     return room_id, value
 
 
