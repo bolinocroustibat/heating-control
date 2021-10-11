@@ -91,7 +91,10 @@ async def message(
 ) -> None:
     if topic == "/readings/temperature":
         room_id, value = await unpack_payload(payload=payload)
-        state[room_id] = {"temperature": value}
+        if room_id in state.keys():
+            state[room_id]["temperature"] = value
+        else:
+            state[room_id] = {"temperature" : value}
 
         print(
             f"Current temperature report for room {room_id} updated to {str(value)}°C. Current state: {str(state)}"
@@ -101,7 +104,10 @@ async def message(
 
     if topic == "/readings/motion":
         room_id, value = await unpack_payload(payload=payload)
-        state[room_id] = {"motion": value}
+        if room_id in state.keys():
+            state[room_id]["motion"] = value
+        else:
+            state[room_id] = {"motion" : value}
 
         print(
             f"Current motion report for room {room_id} updated to {str(value)}. Current state: {str(state)}"

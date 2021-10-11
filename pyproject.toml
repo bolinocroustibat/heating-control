@@ -8,6 +8,7 @@ authors = ["Adrien Carpentier <moi@adriencarpentier.com>"]
 python = "^3.9"
 fastapi = "^0.68.1"
 fastapi-mqtt = "^0.3.0"
+requests = "^2.26.0"
 toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
