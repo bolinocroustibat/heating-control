@@ -10,6 +10,7 @@ Only if motion is detected in the room, or if the motion sensor didn't return an
 
 If no motion is detected, the heating valve is closed.
 
+
 ## Stack
 
 It uses [FastAPI](https://fastapi.tiangolo.com/), a very modern and beautifully designed Python API framework based on Python type hinting and Pydantic models, and [FastApi-MQTT](https://sabuhish.github.io/fastapi-mqtt/), a MQTT implementation module for FastAPI. See [Run without Docker->Prerequisites](####prerequisites) section for more details.
@@ -49,14 +50,15 @@ Edit the config file `app/config.py` to change:
 - the desired room temperature (`DESIRED_ROOM_TEMP`)
 - the MQTT credentials if necessary
 
+
 ## HTTP endpoints
 
 - `/health-check`:
-    - Returns information about that health of the app, including the current state of all rooms, and the connection status to MQTT broker
-    - Method: `GET`
+	- Returns information about that health of the app, including the current state of all rooms, and the connection status to MQTT broker
+	- Method: `GET`
 - `/docs`:
-    - Returns the OpenAPI specification of the service
-    - Method: `GET`
+	- Returns the OpenAPI specification of the service
+	- Method: `GET`
 
 
 ## Topics
